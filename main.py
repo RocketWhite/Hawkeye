@@ -2,10 +2,9 @@ import torch
 import configparser
 from torchvision import transforms
 from torchvision.datasets import MNIST, FashionMNIST, CIFAR10, ImageNet
-from models import *
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import RandomSampler, WeightedRandomSampler
-
+import torchattacks.torchattacks
 
 def make_weights_for_sampling(dataset, sampling):
     n_classes = len(dataset.classes)
@@ -70,7 +69,7 @@ def main():
     if bool(int(cfg.get("model","retrain"))):
         batch_size = int(cfg.get("model", "batch_size"))
         training_loader = DataLoader(training_set, batch_size, shuffle=True)
-        model = train(device, model, training_loader)
+        model = obj.train(device, model, training_loader)
     else:
         path = "./models_dict/%s.ckpt" % model.__class__.__name__
         model.load_state_dict(torch.load(path))
@@ -103,14 +102,35 @@ def main():
                                                      batch_size=batch_size,
                                                      sampler=test_sampler)
 
-    # 5. Generate adversarial examples
-    obj = __import__("models", model_name + dataset_name)
-    AClass = getattr(obj, model_name + dataset_name)
-    model = AClass().to(device)
+    # 5. Generate adversarial examples for training detector and test detector
+    model.eval()
+    total = 0
+    correct = 0
+    train_attack_name = cfg.get("attack", "train_attack_method")
+    train_params = dict([a, float(x)] for a, x in cfg.items("train_attack_parameters"))
+    obj = __import__("torchattacks.torchattacks", train_attack_name)
+    train_attack_method = getattr(obj, train_attack_name)(model, **train_params)
+    test_attack_name = cfg.get("attack", "test_attack_method")
+    test_params = dict([a, float(x)] for a, x in cfg.items("test_attack_parameters"))
+    obj = __import__("torchattacks.torchattacks", test_attack_name)
+    test_attack_method = getattr(obj, test_attack_name)(model, **test_params)
 
-    # 6. Evaluate robust classification techniques
+    for images, labels in adversarial_examples_train_loader:
+        images = images.to(device)
+        labels = labels.to(device)
+        ori_outputs = model(images)
+        img = train_attack_method(images, labels)
+        ad_outputs = model(img)
+        _, ori_predicted = torch.max(ori_outputs.data, 1)
+        _, ad_predicted = torch.max(ad_outputs.data, 1)
+        total += (ori_predicted == labels).sum()
+        correct += ((ori_predicted == labels) * (ad_predicted == labels)).sum()
 
-    # 7. Detection Experiment
+    print('Accuracy of Adversarial images: %f %%' % (100 * float(correct) / total))
+
+    # 6. Detection
+
+    # 7. Evaluate robust classification techniques
 
 
 if __name__ == "__main__":
