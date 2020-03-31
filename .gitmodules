@@ -1,0 +1,3 @@
+[submodule "adversarial-attacks-pytorch/torchattacks"]
+	path = adversarial-attacks-pytorch/torchattacks
+	url = https://github.com/Harry24k/adversarial-attacks-pytorch.git
