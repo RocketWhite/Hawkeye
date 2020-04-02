@@ -4,7 +4,8 @@ from torchvision import transforms
 from torchvision.datasets import MNIST, FashionMNIST, CIFAR10, ImageNet
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import RandomSampler, WeightedRandomSampler
-import torchattacks.torchattacks
+from attacks import AttackWrapper
+
 
 def make_weights_for_sampling(dataset, sampling):
     n_classes = len(dataset.classes)
@@ -83,11 +84,11 @@ def main():
     batch_size = int(cfg.get("data_sampling", "batch_size"))
     sampling = int(cfg.get("data_sampling", "sampling"))
     if sampling == 2:
-        adversarial_examples_train_loader = DataLoader(dataset=training_set,
+        detector_train_loader = DataLoader(dataset=training_set,
                                                        batch_size=batch_size,
                                                        sampler=RandomSampler(training_set,
                                                                              num_samples=nb_train_samples))
-        adversarial_example_test_loader = DataLoader(dataset=test_set,
+        detector_test_loader = DataLoader(dataset=test_set,
                                                      batch_size=batch_size,
                                                      sampler=RandomSampler(test_set, num_samples=nb_test_samples))
     else:
@@ -95,41 +96,54 @@ def main():
         test_weights = make_weights_for_sampling(test_set, sampling)
         train_sampler = WeightedRandomSampler(train_weights, nb_train_samples)
         test_sampler = WeightedRandomSampler(test_weights, nb_test_samples)
-        adversarial_examples_train_loader = DataLoader(dataset=training_set,
+        detector_train_loader = DataLoader(dataset=training_set,
                                                        batch_size=batch_size,
                                                        sampler=train_sampler)
-        adversarial_example_test_loader = DataLoader(dataset=test_set,
+        detector_test_loader = DataLoader(dataset=test_set,
                                                      batch_size=batch_size,
                                                      sampler=test_sampler)
 
-    # 5. Generate adversarial examples for training detector and test detector
-    model.eval()
-    total = 0
-    correct = 0
+    # 5 Construct sampling dataset to train and test detector
+
     train_attack_name = cfg.get("attack", "train_attack_method")
     train_params = dict([a, float(x)] for a, x in cfg.items("train_attack_parameters"))
     obj = __import__("torchattacks.torchattacks", train_attack_name)
-    train_attack_method = getattr(obj, train_attack_name)(model, **train_params)
+    train_attack_instance = getattr(obj, train_attack_name)(model, **train_params)
     test_attack_name = cfg.get("attack", "test_attack_method")
     test_params = dict([a, float(x)] for a, x in cfg.items("test_attack_parameters"))
     obj = __import__("torchattacks.torchattacks", test_attack_name)
-    test_attack_method = getattr(obj, test_attack_name)(model, **test_params)
-
-    for images, labels in adversarial_examples_train_loader:
-        images = images.to(device)
-        labels = labels.to(device)
-        ori_outputs = model(images)
-        img = train_attack_method(images, labels)
-        ad_outputs = model(img)
-        _, ori_predicted = torch.max(ori_outputs.data, 1)
-        _, ad_predicted = torch.max(ad_outputs.data, 1)
-        total += (ori_predicted == labels).sum()
-        correct += ((ori_predicted == labels) * (ad_predicted == labels)).sum()
-
-    print('Accuracy of Adversarial images: %f %%' % (100 * float(correct) / total))
+    test_attack_instance = getattr(obj, test_attack_name)(model, **test_params)
+    train_attack = AttackWrapper(train_attack_instance, device)
+    test_attack = AttackWrapper(test_attack_instance, device)
+    detector_train_dataloader = train_attack.generate(detector_train_loader)
+    detector_test_dataloader= test_attack.generate(detector_test_loader)
+    print('Accuracy of training samples\' Adversarial images: %f %%' % (100 * train_attack.accuracy()))
+    print('Accuracy of test samples\' Adversarial images: %f %%' % (100 * test_attack.accuracy()))
 
     # 6. Detection
+    # 6.1 Define Squeezers
+    squeezers = []
+    for name, squeezer in cfg.items("squeezer"):
+        obj = __import__("squeezer", squeezer)
+        squeezer_parameter = dict(cfg.items("squeezer_parameters_" + name))
+        squeezers.append(getattr(obj, squeezer)(**squeezer_parameter))
 
+    # 6.2 Define Classifiers
+    classifiers = []
+    for name, classifier in cfg.items("classifier"):
+        obj = __import__("classifier", classifier)
+        classifier_parameter = dict(cfg.items("classifier_parameters_" + name))
+        classifiers.append(getattr(obj, classifier)(**classifier_parameter).to(device))
+
+    # 6.3 Define Detector
+    detector_name = cfg.get("detector", "name")
+    obj = __import__("detectors", detector_name)
+    detector = getattr(obj, detector_name)(model, device, squeezers, classifiers)
+    # 6.4 train detector
+    detector.fit(detector_train_dataloader)
+
+    # 6.5 test detector
+    detector.test(detector_test_dataloader)
     # 7. Evaluate robust classification techniques
 
 

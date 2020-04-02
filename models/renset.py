@@ -137,9 +137,9 @@ def train(device, model, train_loader):
         for i, (images, labels) in enumerate(train_loader):
             images = images.to(device)
             labels = labels.to(device)
-
             # Forward pass
             outputs = model(images)
+
             loss = criterion(outputs, labels)
 
             # Backward and optimize
