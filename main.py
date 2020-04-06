@@ -9,6 +9,12 @@ from attacks import AttackWrapper
 
 
 def make_weights_for_sampling(dataset, sampling):
+    """
+    Sampling from original input.
+    :param dataset: a instance of torchvision.datasets
+    :param sampling: sampling mode, 0: test, only 1 per label 1: balance sampling
+    :return:
+    """
     n_classes = len(dataset.classes)
     count = [0] * n_classes
     weight_per_class = [0.] * n_classes
@@ -31,7 +37,6 @@ def make_weights_for_sampling(dataset, sampling):
             weight[idx] = weight_per_class[val]
     else:
         raise(ValueError("Undefined value %s, check config.ini or documents" % sampling))
-
     return weight
 
 
@@ -44,10 +49,10 @@ def main():
 
     # 1. Select and Load a dataset
     dataset_name = cfg.get("dataset", "dataset")
-    try:
-        obj = importlib.import_module("torchvision.datasets")
+    try:                                                         # first try to load the dataset of our own
+        obj = importlib.import_module("datasets")
         dataset = getattr(obj, dataset_name)
-    except AttributeError:
+    except AttributeError:                                       # if doesn't, try torchvision.datasets
         obj = importlib.import_module("torchvision.datasets")
         dataset = getattr(obj, dataset_name)
     transform = transforms.Compose([
@@ -59,6 +64,7 @@ def main():
     test_set = dataset("datasets", train=False, transform=transform, download=True)
 
     # 2. Load a pre-trained model or train a model
+    # pretrained model_dict name specification: ClassnameDatasetname.ckpt eg: ResNetCIFAR10.ckpt
     print("Loading Pretrained model...")
     test_loader = DataLoader(test_set, shuffle=True)
     model_name = cfg.get("model", "model")
@@ -74,10 +80,13 @@ def main():
         model.load_state_dict(torch.load(path))
 
     # 3. Evaluate the trained model
-    # print("Evaluating the pretrained model...")
-    # model.predict(device, data_loader=test_loader)
-    # print('Accuracy of the model on the test images: {}/{} = {}%'.format(
-    #     model.correct, model.total, 100 * model.correct / model.total))
+    if int(cfg.get("model", "test")) != 0:
+        print("Evaluating the pretrained model...")
+        model.predict(device, data_loader=test_loader)
+        print('Accuracy of the model on the test images: {}/{} = {}%'.format(
+            model.correct, model.total, 100 * model.correct / model.total))
+    else:
+        print("Skip evaluating the model")
 
     # 4. Select some examples to attack
     print("Sampling data to attack...")
@@ -107,17 +116,28 @@ def main():
 
     # 5 Loading attack method and detection method
     # 5.1 Loading attack method
+    # attack model for training detectors and test could be not same.
     print("Loading the attack methods...")
-    obj = importlib.import_module("torchattacks.torchattacks")
-
+    torchattack_obj = importlib.import_module("torchattacks.torchattacks")
+    model_obj = importlib.import_module("attacks")
     train_attack_name = cfg.get("attack", "train_attack_method")
     train_params = dict([a, float(x)] for a, x in cfg.items("train_attack_parameters"))
-    train_attack_instance = getattr(obj, train_attack_name)(model, **train_params)
+    try:
+        # try load our own attack method first
+        train_attack_instance = getattr(model_obj, train_attack_name)(model, **train_params)
+    except AttributeError:
+        # if it doesn't exist, load torchattack.
+        train_attack_instance = getattr(torchattack_obj, train_attack_name)(model, **train_params)
     train_attacker = AttackWrapper(train_attack_instance)
 
     test_attack_name = cfg.get("attack", "test_attack_method")
     test_params = dict([a, float(x)] for a, x in cfg.items("test_attack_parameters"))
-    test_attack_instance = getattr(obj, test_attack_name)(model, **test_params)
+    try:
+        # try load our own attack method first
+        test_attack_instance = getattr(model_obj, test_attack_name)(model, **test_params)
+    except AttributeError:
+        # if it doesn't exist, load torchattack.
+        test_attack_instance = getattr(torchattack_obj, test_attack_name)(model, **test_params)
     test_attacker = AttackWrapper(test_attack_instance)
 
     # 5.2 Loading detectors
@@ -156,29 +176,18 @@ def main():
     print('Accuracy of test samples\' Adversarial images: %f %%' % (100 * test_attacker.accuracy()))
     print("Evaluating the detector")
     # 9. Evaluate robust classification techniques
-    # train
-    detector.test(device, data_loader=detector_train_loader, squeezers=squeezers, attackers=train_attacker)
-    for classifier in classifiers:
-        correct, total = (classifier.correct, classifier.total)
-        tp, tn, fp, fn = (
-            classifier.true_positive, classifier.true_negative, classifier.false_positive, classifier.false_negative)
-        print(correct, total, tp, tn, fp, fn)
 
-
-    correct, total = (detector.correct, detector.total)
-    tp, tn, fp, fn = (detector.true_positive, detector.true_negative, detector.false_positive, detector.false_negative)
-    print(correct, total, tp, tn, fp, fn)
-    detector.clear()
-    # test
     detector.test(device, data_loader=detector_test_loader, squeezers=squeezers, attackers=test_attacker)
-    for classifier in classifiers:
+    for i, classifier in enumerate(classifiers):
         correct, total = (classifier.correct, classifier.total)
         tp, tn, fp, fn = (
         classifier.true_positive, classifier.true_negative, classifier.false_positive, classifier.false_negative)
-        print(correct, total, tp, tn, fp, fn)
+        print("Classifier {}: Correct:{} Total:{} TP:{} TN:{} FP:{} FN:{}"
+              .format(i, correct, total, tp, tn, fp, fn))
     correct, total = (detector.correct, detector.total)
     tp, tn, fp, fn = (detector.true_positive, detector.true_negative, detector.false_positive, detector.false_negative)
-    print(correct, total, tp, tn, fp, fn)
+    print("Detector: Correct:{} Total:{} TP:{} TN:{} FP:{} FN:{}".format(correct, total, tp, tn, fp, fn))
+
 
 
 if __name__ == "__main__":

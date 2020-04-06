@@ -44,6 +44,11 @@ class AttackWrapper():
             dataset = TensorDataset(x_for_detector.detach(), y_for_detector.detach())
         return DataLoader(dataset, batch_size=data_loader.batch_size, shuffle=data_loader.shuffle)
 
+
+    def save(self, path, dataset):
+        a = torch.Tensor()
+
+
     def accuracy(self):
         if self.total == 0:
             raise ValueError("No successful attack yet.")
