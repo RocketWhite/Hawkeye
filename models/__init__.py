@@ -1,3 +1,3 @@
-from .renset import ResNetMNIST, ResNetCifar, train, test
+from .renset import ResNetMNIST, ResNetCIFAR10
 
-__all__ = ('train', 'test', 'ResNetMNIST', 'ResNetCifar')
+__all__ = ('ResNetMNIST', 'ResNetCIFAR10')

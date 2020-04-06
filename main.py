@@ -1,5 +1,6 @@
 import torch
 import configparser
+import importlib
 from torchvision import transforms
 from torchvision.datasets import MNIST, FashionMNIST, CIFAR10, ImageNet
 from torch.utils.data import DataLoader
@@ -36,22 +37,18 @@ def make_weights_for_sampling(dataset, sampling):
 
 def main():
     # 0. Load the config file
+    print("Loading config...")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     cfg = configparser.ConfigParser()
     cfg.read("config.ini")
 
     # 1. Select and Load a dataset
     dataset_name = cfg.get("dataset", "dataset")
-    if dataset_name == "MNIST":
-        dataset = MNIST
-    elif dataset_name == "FashionMNIST":
-        dataset = FashionMNIST
-    elif dataset_name == "Cifar":
-        dataset = CIFAR10
-    elif dataset_name == "ImageNet":
-        dataset = ImageNet
-    else:
-        obj = __import__("datasets", dataset_name)
+    try:
+        obj = importlib.import_module("torchvision.datasets")
+        dataset = getattr(obj, dataset_name)
+    except AttributeError:
+        obj = importlib.import_module("torchvision.datasets")
         dataset = getattr(obj, dataset_name)
     transform = transforms.Compose([
         transforms.Pad(4),
@@ -62,35 +59,40 @@ def main():
     test_set = dataset("datasets", train=False, transform=transform, download=True)
 
     # 2. Load a pre-trained model or train a model
+    print("Loading Pretrained model...")
     test_loader = DataLoader(test_set, shuffle=True)
     model_name = cfg.get("model", "model")
-    obj = __import__("models", model_name + dataset_name)
-    AClass = getattr(obj, model_name + dataset_name)
-    model = AClass().to(device)
+    obj = importlib.import_module("models")
+    model = getattr(obj, model_name + dataset_name)().to(device)
+
     if bool(int(cfg.get("model","retrain"))):
         batch_size = int(cfg.get("model", "batch_size"))
         training_loader = DataLoader(training_set, batch_size, shuffle=True)
-        model = obj.train(device, model, training_loader)
+        model.fit(device, data_loader=training_loader)
     else:
         path = "./models_dict/%s.ckpt" % model.__class__.__name__
         model.load_state_dict(torch.load(path))
 
     # 3. Evaluate the trained model
-    # test(device, model, test_loader)
+    # print("Evaluating the pretrained model...")
+    # model.predict(device, data_loader=test_loader)
+    # print('Accuracy of the model on the test images: {}/{} = {}%'.format(
+    #     model.correct, model.total, 100 * model.correct / model.total))
 
     # 4. Select some examples to attack
+    print("Sampling data to attack...")
     nb_train_samples = int(cfg.get("data_sampling", "nb_train_samples"))
     nb_test_samples = int(cfg.get("data_sampling", "nb_test_samples"))
     batch_size = int(cfg.get("data_sampling", "batch_size"))
     sampling = int(cfg.get("data_sampling", "sampling"))
     if sampling == 2:
         detector_train_loader = DataLoader(dataset=training_set,
-                                                       batch_size=batch_size,
-                                                       sampler=RandomSampler(training_set,
-                                                                             num_samples=nb_train_samples))
+                                           batch_size=batch_size,
+                                           sampler=RandomSampler(training_set, num_samples=nb_train_samples),
+                                           shuffle=True)
         detector_test_loader = DataLoader(dataset=test_set,
-                                                     batch_size=batch_size,
-                                                     sampler=RandomSampler(test_set, num_samples=nb_test_samples))
+                                          batch_size=batch_size,
+                                          sampler=RandomSampler(test_set, num_samples=nb_test_samples))
     else:
         train_weights = make_weights_for_sampling(training_set, sampling)
         test_weights = make_weights_for_sampling(test_set, sampling)
@@ -103,49 +105,82 @@ def main():
                                                      batch_size=batch_size,
                                                      sampler=test_sampler)
 
-    # 5 Construct sampling dataset to train and test detector
+    # 5 Loading attack method and detection method
+    # 5.1 Loading attack method
+    print("Loading the attack methods...")
+    obj = importlib.import_module("torchattacks.torchattacks")
 
     train_attack_name = cfg.get("attack", "train_attack_method")
     train_params = dict([a, float(x)] for a, x in cfg.items("train_attack_parameters"))
-    obj = __import__("torchattacks.torchattacks", train_attack_name)
     train_attack_instance = getattr(obj, train_attack_name)(model, **train_params)
+    train_attacker = AttackWrapper(train_attack_instance)
+
     test_attack_name = cfg.get("attack", "test_attack_method")
     test_params = dict([a, float(x)] for a, x in cfg.items("test_attack_parameters"))
-    obj = __import__("torchattacks.torchattacks", test_attack_name)
     test_attack_instance = getattr(obj, test_attack_name)(model, **test_params)
-    train_attack = AttackWrapper(train_attack_instance, device)
-    test_attack = AttackWrapper(test_attack_instance, device)
-    detector_train_dataloader = train_attack.generate(detector_train_loader)
-    detector_test_dataloader= test_attack.generate(detector_test_loader)
-    print('Accuracy of training samples\' Adversarial images: %f %%' % (100 * train_attack.accuracy()))
-    print('Accuracy of test samples\' Adversarial images: %f %%' % (100 * test_attack.accuracy()))
+    test_attacker = AttackWrapper(test_attack_instance)
 
-    # 6. Detection
-    # 6.1 Define Squeezers
+    # 5.2 Loading detectors
+    print("Loading the detector...")
+    # 5.2.1 Loading squeezers
     squeezers = []
     for name, squeezer in cfg.items("squeezer"):
-        obj = __import__("squeezer", squeezer)
+        obj = __import__("squeezers", squeezer)
         squeezer_parameter = dict(cfg.items("squeezer_parameters_" + name))
         squeezers.append(getattr(obj, squeezer)(**squeezer_parameter))
 
-    # 6.2 Define Classifiers
+    # 5.2.2 Loading Classifiers
     classifiers = []
     for name, classifier in cfg.items("classifier"):
-        obj = __import__("classifier", classifier)
+        obj = __import__("classifiers", classifier)
         classifier_parameter = dict(cfg.items("classifier_parameters_" + name))
         classifiers.append(getattr(obj, classifier)(**classifier_parameter).to(device))
 
-    # 6.3 Define Detector
+    # 5.2.3 Loading Detector
     detector_name = cfg.get("detector", "name")
     obj = __import__("detectors", detector_name)
-    detector = getattr(obj, detector_name)(model, device, squeezers, classifiers)
-    # 6.4 train detector
-    detector.fit(detector_train_dataloader)
+    detector = getattr(obj, detector_name)(model, classifiers)
 
-    # 6.5 test detector
-    detector.test(detector_test_dataloader)
-    # 7. Evaluate robust classification techniques
+    # 6. Training detectors
+    print("Training Detectors...")
+    detector.training(device, data_loader=detector_train_loader, squeezers=squeezers, attackers=train_attacker)
+    # 7. Evaluating the attack method
+    print("Evaluating the attack method...")
+
+    print('Accuracy of training samples\' Adversarial images: %f %%' % (100 * train_attacker.accuracy()))
+
+    # 8. test detector
+    print("Defending...")
+    detector.test(device, data_loader=detector_test_loader, squeezers=squeezers, attackers=test_attacker)
+
+    print('Accuracy of test samples\' Adversarial images: %f %%' % (100 * test_attacker.accuracy()))
+    print("Evaluating the detector")
+    # 9. Evaluate robust classification techniques
+    # train
+    detector.test(device, data_loader=detector_train_loader, squeezers=squeezers, attackers=train_attacker)
+    for classifier in classifiers:
+        correct, total = (classifier.correct, classifier.total)
+        tp, tn, fp, fn = (
+            classifier.true_positive, classifier.true_negative, classifier.false_positive, classifier.false_negative)
+        print(correct, total, tp, tn, fp, fn)
+
+
+    correct, total = (detector.correct, detector.total)
+    tp, tn, fp, fn = (detector.true_positive, detector.true_negative, detector.false_positive, detector.false_negative)
+    print(correct, total, tp, tn, fp, fn)
+    detector.clear()
+    # test
+    detector.test(device, data_loader=detector_test_loader, squeezers=squeezers, attackers=test_attacker)
+    for classifier in classifiers:
+        correct, total = (classifier.correct, classifier.total)
+        tp, tn, fp, fn = (
+        classifier.true_positive, classifier.true_negative, classifier.false_positive, classifier.false_negative)
+        print(correct, total, tp, tn, fp, fn)
+    correct, total = (detector.correct, detector.total)
+    tp, tn, fp, fn = (detector.true_positive, detector.true_negative, detector.false_positive, detector.false_negative)
+    print(correct, total, tp, tn, fp, fn)
 
 
 if __name__ == "__main__":
     main()
+
