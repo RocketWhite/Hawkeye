@@ -3,80 +3,83 @@
 Hawkeye is a state-of-art adversarial examples detector(See more intro of adversarial examples [here](https://openai.com/blog/adversarial-example-research/)). (Paper Preparing)
 
 ## Getting Started
+We highly recommend using anaconda to manage the virtual environment. You can download the anaconda [here](https://www.anaconda.com/distribution/). Please choose Python 3.7 version.
 
 ### Prerequisites
 
 * python 3.7
 * pytorch 1.4.0
 * torchvision 0.5.0
-* torchattacks
+* torchattacks 1.1
 
 ### Installing
-
-We highly recommend using anaconda to manage the virtual environment. You can download the anaconda [here](https://www.anaconda.com/distribution/). Please choose Python 3.7 version.
+```
+git clone https://github.com/RocketWhite/Hawkeye.git
 
 ```
-Give the example
+### Precaution
+* **WARNING** :: All images should be scaled to [0, 1] with transform[to.Tensor()] before used in attacks and detecting.
+
+## Structure
 ```
-
-And repeat
-
+├───Hawkeye
+│   │   config.ini                          # configuration file.
+│   │   environment.yaml                    # conda environment yaml
+│   │   main.py                             # main detect process
+│   │
+│   ├───attacks
+│   │       attack_wrapper.py
+│   │       __init__.py
+│   │
+│   ├───classifiers
+│   │       nnclassifier.py
+│   │       __init__.py
+│   │
+│   ├───datasets
+│   │   └───MNIST
+│   │       ├───processed
+│   │       │       test.pt
+│   │       │       training.pt
+│   │       │
+│   │       └───raw
+│   │               t10k-images-idx3-ubyte
+│   │               t10k-images-idx3-ubyte.gz
+│   │               t10k-labels-idx1-ubyte
+│   │               t10k-labels-idx1-ubyte.gz
+│   │               train-images-idx3-ubyte
+│   │               train-images-idx3-ubyte.gz
+│   │               train-labels-idx1-ubyte
+│   │               train-labels-idx1-ubyte.gz
+│   │
+│   ├───detectors
+│   │   │   hawkeye.py
+│   │   │   __init__.py
+│   │   │
+│   │   └───__pycache__
+│   │           hawkeye.cpython-37.pyc
+│   │           __init__.cpython-37.pyc
+│   │
+│   ├───models
+│   │   │   renset.py
+│   │   │   __init__.py
+│   │   │
+│   │   └───__pycache__
+│   │           renset.cpython-37.pyc
+│   │           __init__.cpython-37.pyc
+│   │
+│   ├───models_dict
+│   │       ResNetCIFAR10.ckpt
+│   │       ResNetMNIST.ckpt
+│   │
+│   ├───squeezers
+│   │   │   colordepthsqueezer.py
+│   │   │   __init__.py
+│   │   │
+│   │   └───__pycache__
+│   │           colordepthsqueezer.cpython-37.pyc
+│   │           __init__.cpython-37.pyc
+│   │
+│   └───utils
+│           __init__.py
+│
 ```
-until finished
-```
-
-End with an example of getting some data out of the system or using it for a little demo
-
-## Running the tests
-
-Explain how to run the automated tests for this system
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-### And coding style tests
-
-Explain what these tests test and why
-
-```
-Give an example
-```
-
-## Deployment
-
-Add additional notes about how to deploy this on a live system
-
-## Built With
-
-* [Dropwizard](http://www.dropwizard.io/1.0.2/docs/) - The web framework used
-* [Maven](https://maven.apache.org/) - Dependency Management
-* [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
-
-## Contributing
-
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
-
-## Versioning
-
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags). 
-
-## Authors
-
-* **Billie Thompson** - *Initial work* - [PurpleBooth](https://github.com/PurpleBooth)
-
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
-
-## Acknowledgments
-
-* Hat tip to anyone whose code was used
-* Inspiration
-* etc
