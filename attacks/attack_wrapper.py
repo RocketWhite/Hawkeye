@@ -1,53 +1,52 @@
 from torch.utils.data import TensorDataset
 from torch.utils.data import DataLoader
 import torch
+import os
+import math
+
 
 class AttackWrapper():
     def __init__(self, adversarial_attack_instance):
         self.instance = adversarial_attack_instance
-        self.transform = self.attack
         self.total = 0.0
         self.correct = 0.0
 
     def attack(self, x, y):
         ori_outputs = self.instance.model(x)
         imgs = self.instance(x, y)
-        label = torch.ones_like(y)
         ae_outputs = self.instance.model(imgs)
         _, ori_predicted = torch.max(ori_outputs.data, 1)
-        _, ad_predicted = torch.max(ae_outputs.data, 1)
+        _, ae_predicted = torch.max(ae_outputs.data, 1)
         self.total += (ori_predicted == y).sum()
-        self.correct += ((ori_predicted == y) * (ad_predicted == y)).sum()
-        return imgs, label
+        self.correct += ((ori_predicted == y) * (ae_predicted == y)).sum()
+        return imgs
 
-    def transform(self, device, data_loader=None):
-
-        x_for_detector = None
-        y_for_detector = None
-
+    def transform(self, device, data_loader):
+        total_iteration = math.ceil(len(data_loader.dataset)/data_loader.batch_size)
+        x = []
+        y = []
+        i = 0
         for images, labels in data_loader:
+            i += 1
             images = images.to(device)
             labels = labels.to(device)
-            ae_images, ae_label = self.attack(images, labels)
-            label = torch.zeros_like(ae_label)
-            if x_for_detector is not None:
-                x_for_detector = torch.cat((x_for_detector, images), 0)
-            else:
-                x_for_detector = images
-            if y_for_detector is not None:
-                y_for_detector = torch.cat((y_for_detector, torch.zeros_like(labels).to(device)), 0)
-            else:
-                y_for_detector = torch.zeros_like(labels)
+            ae_images = self.attack(images, labels)
+            x.append(ae_images)
+            y.append(labels)
+            i = len(y)
+            if i % 100 == 0:
+                print("finish {}/{} batches".format(str(i), str(total_iteration)))
 
-            x_for_detector = torch.cat((x_for_detector, ae_images), 0)
-            y_for_detector = torch.cat((y_for_detector, torch.ones_like(labels, dtype=torch.long).to(device)), 0)
-            dataset = TensorDataset(x_for_detector.detach(), y_for_detector.detach())
-        return DataLoader(dataset, batch_size=data_loader.batch_size, shuffle=data_loader.shuffle)
+        x = torch.cat(x, 0)
+        y = torch.cat(y, 0)
+        return x, y
 
-
-    def save(self, path, dataset):
-        a = torch.Tensor()
-
+    def save(self, device, data_loader, path):
+        device2 = torch.device('cpu')
+        dataset = self.transform(device=device, data_loader=data_loader)
+        dataset = (dataset[0].to(device2), dataset[1].to(device2))
+        with open(path, 'wb') as f:
+            torch.save(dataset, f)
 
     def accuracy(self):
         if self.total == 0:

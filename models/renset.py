@@ -42,6 +42,7 @@ class ResNetCIFAR10(nn.Module):
         block = ResidualBlock
         layers = [2, 2, 2]
         num_classes = 10
+
         self.correct = 0.
         self.total = 0.
         self.in_channels = 16
@@ -99,11 +100,7 @@ class ResNetCIFAR10(nn.Module):
         elif data_loader is None:
             raise ValueError("Should pass either x and y or data_loader")
         # Image preprocessing modules
-        transform = transforms.Compose([
-            transforms.Pad(4),
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(32),
-            transforms.ToTensor()])
+
 
         # For updating learning rate
         def update_lr(optimizer, lr):
@@ -145,7 +142,7 @@ class ResNetCIFAR10(nn.Module):
         torch.save(self.state_dict(), path)
         return self
 
-    def predict(self, device, x=None, y=None,  data_loader=None):
+    def predict(self, device, x=None, y=None, data_loader=None):
         # Test the model
         if x is not None and y is not None:
             data_loader = DataLoader(TensorDataset(x, y))
@@ -153,7 +150,6 @@ class ResNetCIFAR10(nn.Module):
             raise ValueError("Should pass either x and y or data_loader")
         self.eval()
         with torch.no_grad():
-
             for images, labels in data_loader:
                 images = images.to(device)
                 labels = labels.to(device)
@@ -161,13 +157,22 @@ class ResNetCIFAR10(nn.Module):
                 _, predicted = torch.max(outputs.data, 1)
                 self.total += labels.size(0)
                 self.correct += (predicted == labels).sum().item()
-
         return predicted
 
         # Save the model checkpoint
         # torch.save(model.state_dict(), './resnet.ckpt')
 
+    def clear_stat(self):
+        self.correct = 0.
+        self.total = 0.
+
 class ResNetMNIST(ResNetCIFAR10):
     def __init__(self):
         super(ResNetMNIST, self).__init__()
+        self.conv = conv3x3(1, 16)
+
+
+class ResNetFashionMNIST(ResNetCIFAR10):
+    def __init__(self):
+        super(ResNetFashionMNIST, self).__init__()
         self.conv = conv3x3(1, 16)

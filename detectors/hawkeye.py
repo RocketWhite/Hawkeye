@@ -14,44 +14,38 @@ class Hawkeye():
         self.false_positive = 0.
         self.false_negative = 0.
 
-    def training(self, device, data_loader, squeezers, attackers, learning_rate=2e-4, num_epochs=10):
+    def training(self, device, data_loader, squeezers, learning_rate=2e-4, num_epochs=10):
         """
         could write to multi processor for later update
-        :param dataloader:
+        :param dataloader: combined with adversarial examples and natural examples; labels are 0 or 1 represent natural
+        or adversarial exmaples.
         :return:
         """
         for epoch in range(num_epochs):
-            for image, label in data_loader:
-                image = image.to(device)
-                label = label.to(device)
-                ae_image, ae_y = attackers.attack(image, label)
-                x = torch.cat((image, ae_image), dim=0).detach()
-                y = torch.cat((torch.zeros_like(ae_y), ae_y), dim=0).detach()
-                logit = self.model(x).detach()
+            for images, labels in data_loader:
+                images = images.to(device)
+                labels = labels.to(device)
+                logit = self.model(images).detach()
 
                 for i, squeezer in enumerate(squeezers):
-                    logit_diff = logit - self.model(squeezer.transform(x))
-                    loss = self.classifiers[i].fit(device, x=logit_diff, y=y, learning_rate=learning_rate)
+                    logit_diff = logit - self.model(squeezer.transform(images))
+                    loss = self.classifiers[i].fit(device, x=logit_diff, y=labels, learning_rate=learning_rate)
                     print("Epoch [{}/{}], Step [{}] Loss: {:.4f}"
                           .format(epoch + 1, num_epochs, i + 1, loss))
 
-    def test(self, device, data_loader, squeezers, attackers):
-        for image, label in data_loader:
-            image = image.to(device)
-            label = label.to(device)
-            ae_image, ae_y = attackers.attack(image, label)
-            x = torch.cat((image, ae_image), dim=0).detach()
-            y = torch.cat((torch.zeros_like(ae_y), ae_y), dim=0).detach()
-            logit = self.model(x).detach()
-            predict = torch.ones_like(y)
-
+    def test(self, device, data_loader, squeezers):
+        for images, labels in data_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+            logit = self.model(images).detach()
+            predicts = torch.ones_like(labels)
             for i, squeezer in enumerate(squeezers):
-                logit_diff = logit - self.model(squeezer.transform(x))
-                predict = predict * self.classifiers[i].predict(device, x=logit_diff, y=y)
-            true_positive = torch.sum((predict == 1).float() * (y == 1).float())
-            true_negative = torch.sum((predict == 0).float() * (y == 0).float())
-            false_positive = torch.sum((predict == 1).float() * (y == 0).float())
-            false_negative = torch.sum((predict == 0).float() * (y == 1).float())
+                logit_diff = logit - self.model(squeezer.transform(images))
+                predicts = predicts * self.classifiers[i].predict(device, x=logit_diff, y=labels)
+            true_positive = torch.sum((predicts == 1).float() * (labels == 1).float())
+            true_negative = torch.sum((predicts == 0).float() * (labels == 0).float())
+            false_positive = torch.sum((predicts == 1).float() * (labels == 0).float())
+            false_negative = torch.sum((predicts == 0).float() * (labels == 1).float())
             self.true_positive += true_positive
             self.true_negative += true_negative
             self.false_positive += false_positive

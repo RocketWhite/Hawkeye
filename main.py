@@ -2,57 +2,25 @@ import torch
 import configparser
 import importlib
 from torchvision import transforms
-from torchvision.datasets import MNIST, FashionMNIST, CIFAR10, ImageNet
-from torch.utils.data import DataLoader
-from torch.utils.data.sampler import RandomSampler, WeightedRandomSampler
-from attacks import AttackWrapper
-
-
-def make_weights_for_sampling(dataset, sampling):
-    """
-    Sampling from original input.
-    :param dataset: a instance of torchvision.datasets
-    :param sampling: sampling mode, 0: test, only 1 per label 1: balance sampling
-    :return:
-    """
-    n_classes = len(dataset.classes)
-    count = [0] * n_classes
-    weight_per_class = [0.] * n_classes
-    weight = [0] * len(dataset.targets)
-    for item in dataset.targets:
-        count[item] += 1
-    if sampling == 0:
-        # for this kind of sampling, weight_per_class becomes a switch.
-        for idx, val in enumerate(dataset.targets):
-            if sum(weight_per_class) == n_classes:
-                break
-            if weight_per_class[val] == 0:
-                weight[idx] = 1
-                weight_per_class[val] = 1
-
-    elif sampling == 1:
-        for i in range(n_classes):
-            weight_per_class[i] = float(sum(count)) / float(count[i])
-        for idx, val in enumerate(dataset.targets):
-            weight[idx] = weight_per_class[val]
-    else:
-        raise(ValueError("Undefined value %s, check config.ini or documents" % sampling))
-    return weight
-
+from torch.utils.data import DataLoader, TensorDataset
+from pathlib import Path
+from adversarial_example_generator import constuct_adversarial_dataset
 
 def main():
     # 0. Load the config file
     print("Loading config...")
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     cfg = configparser.ConfigParser()
     cfg.read("config.ini")
 
     # 1. Select and Load a dataset
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     dataset_name = cfg.get("dataset", "dataset")
-    try:                                                         # first try to load the dataset of our own
+    try:
+        # first try to load the dataset of our own
         obj = importlib.import_module("datasets")
         dataset = getattr(obj, dataset_name)
-    except AttributeError:                                       # if doesn't, try torchvision.datasets
+    except AttributeError:
+        # if doesn't, try torchvision.datasets
         obj = importlib.import_module("torchvision.datasets")
         dataset = getattr(obj, dataset_name)
     transform = transforms.Compose([
@@ -60,20 +28,19 @@ def main():
         transforms.RandomHorizontalFlip(),
         transforms.RandomCrop(32),
         transforms.ToTensor()])
+    batch_size = int(cfg.get("model", "batch_size"))
     training_set = dataset("datasets", train=True, transform=transform, download=True)
     test_set = dataset("datasets", train=False, transform=transform, download=True)
-
+    training_loader = DataLoader(training_set, batch_size, shuffle=True)
+    test_loader = DataLoader(test_set, batch_size, shuffle=True)
     # 2. Load a pre-trained model or train a model
-    # pretrained model_dict name specification: ClassnameDatasetname.ckpt eg: ResNetCIFAR10.ckpt
+    # pretrained model_dict name specification: ClassnameDataset.ckpt eg: ResNetCIFAR10.ckpt
     print("Loading Pretrained model...")
-    test_loader = DataLoader(test_set, shuffle=True)
     model_name = cfg.get("model", "model")
     obj = importlib.import_module("models")
     model = getattr(obj, model_name + dataset_name)().to(device)
 
     if bool(int(cfg.get("model","retrain"))):
-        batch_size = int(cfg.get("model", "batch_size"))
-        training_loader = DataLoader(training_set, batch_size, shuffle=True)
         model.fit(device, data_loader=training_loader)
     else:
         path = "./models_dict/%s.ckpt" % model.__class__.__name__
@@ -85,99 +52,81 @@ def main():
         model.predict(device, data_loader=test_loader)
         print('Accuracy of the model on the test images: {}/{} = {}%'.format(
             model.correct, model.total, 100 * model.correct / model.total))
+        model.clear_stat()
     else:
         print("Skip evaluating the model")
 
-    # 4. Select some examples to attack
-    print("Sampling data to attack...")
-    nb_train_samples = int(cfg.get("data_sampling", "nb_train_samples"))
-    nb_test_samples = int(cfg.get("data_sampling", "nb_test_samples"))
-    batch_size = int(cfg.get("data_sampling", "batch_size"))
-    sampling = int(cfg.get("data_sampling", "sampling"))
-    if sampling == 2:
-        detector_train_loader = DataLoader(dataset=training_set,
-                                           batch_size=batch_size,
-                                           sampler=RandomSampler(training_set, num_samples=nb_train_samples),
-                                           shuffle=True)
-        detector_test_loader = DataLoader(dataset=test_set,
-                                          batch_size=batch_size,
-                                          sampler=RandomSampler(test_set, num_samples=nb_test_samples))
-    else:
-        train_weights = make_weights_for_sampling(training_set, sampling)
-        test_weights = make_weights_for_sampling(test_set, sampling)
-        train_sampler = WeightedRandomSampler(train_weights, nb_train_samples)
-        test_sampler = WeightedRandomSampler(test_weights, nb_test_samples)
-        detector_train_loader = DataLoader(dataset=training_set,
-                                                       batch_size=batch_size,
-                                                       sampler=train_sampler)
-        detector_test_loader = DataLoader(dataset=test_set,
-                                                     batch_size=batch_size,
-                                                     sampler=test_sampler)
-
-    # 5 Loading attack method and detection method
-    # 5.1 Loading attack method
-    # attack model for training detectors and test could be not same.
-    print("Loading the attack methods...")
-    torchattack_obj = importlib.import_module("torchattacks.torchattacks")
-    model_obj = importlib.import_module("attacks")
+    # 4. Load pre-generated adversarial examples or Select some examples to attack
+    num_train_natural = int(cfg.get('data_sampling', 'nb_train_natural_samples'))
+    num_train_adversarial = int(cfg.get('data_sampling', 'nb_train_adversarial_samples'))
+    num_test_natural = int(cfg.get('data_sampling', 'nb_test_natural_samples'))
+    num_test_adversarial = int(cfg.get('data_sampling', 'nb_test_adversarial_samples'))
+    # the attack method for training detector and test can be different, load separately.
     train_attack_name = cfg.get("attack", "train_attack_method")
     train_params = dict([a, float(x)] for a, x in cfg.items("train_attack_parameters"))
-    try:
-        # try load our own attack method first
-        train_attack_instance = getattr(model_obj, train_attack_name)(model, **train_params)
-    except AttributeError:
-        # if it doesn't exist, load torchattack.
-        train_attack_instance = getattr(torchattack_obj, train_attack_name)(model, **train_params)
-    train_attacker = AttackWrapper(train_attack_instance)
+    path = './adversarial_examples/{}{}_{}_{}/'.format(
+        model_name, dataset_name, train_attack_name, "_".join([str(elem) for elem in train_params.values()]))
+    with open(Path(path) / "train.pt", 'rb') as f:
+        tensor_adversarial_for_training = torch.load(f)
+    dataset_adversarial = TensorDataset(*tensor_adversarial_for_training)
+    adversarial_example_for_train_set = constuct_adversarial_dataset(training_loader,
+                                                                     DataLoader(dataset_adversarial,
+                                                                                batch_size=batch_size,
+                                                                                shuffle=True),
+                                                                     num_train_natural, num_train_adversarial)
 
+    # load attack method for test
     test_attack_name = cfg.get("attack", "test_attack_method")
     test_params = dict([a, float(x)] for a, x in cfg.items("test_attack_parameters"))
-    try:
-        # try load our own attack method first
-        test_attack_instance = getattr(model_obj, test_attack_name)(model, **test_params)
-    except AttributeError:
-        # if it doesn't exist, load torchattack.
-        test_attack_instance = getattr(torchattack_obj, test_attack_name)(model, **test_params)
-    test_attacker = AttackWrapper(test_attack_instance)
+    path = './adversarial_examples/{}{}_{}_{}/'.format(
+            model_name, dataset_name, test_attack_name, "_".join([str(elem) for elem in test_params.values()]))
+    with open(Path(path) / "test.pt", 'rb') as f:
+        tensor_adversarial_for_test = torch.load(f)
+    dataset_adversarial = TensorDataset(*tensor_adversarial_for_test)
+    adversarial_example_for_test_set = constuct_adversarial_dataset(test_loader,
+                                                                    DataLoader(dataset_adversarial,
+                                                                               batch_size=batch_size,
+                                                                               shuffle=True),
+                                                                     num_test_natural, num_test_adversarial)
 
-    # 5.2 Loading detectors
+
+    # 5 Loading detection method
+    # 5.1 Loading detectors
     print("Loading the detector...")
-    # 5.2.1 Loading squeezers
+    # 5.1.1 Loading squeezers
     squeezers = []
     for name, squeezer in cfg.items("squeezer"):
         obj = __import__("squeezers", squeezer)
         squeezer_parameter = dict(cfg.items("squeezer_parameters_" + name))
         squeezers.append(getattr(obj, squeezer)(**squeezer_parameter))
 
-    # 5.2.2 Loading Classifiers
+    # 5.1.2 Loading Classifiers
     classifiers = []
     for name, classifier in cfg.items("classifier"):
         obj = __import__("classifiers", classifier)
         classifier_parameter = dict(cfg.items("classifier_parameters_" + name))
         classifiers.append(getattr(obj, classifier)(**classifier_parameter).to(device))
 
-    # 5.2.3 Loading Detector
+    # 5.1.3 Loading Detector
     detector_name = cfg.get("detector", "name")
     obj = __import__("detectors", detector_name)
     detector = getattr(obj, detector_name)(model, classifiers)
 
-    # 6. Training detectors
-    print("Training Detectors...")
-    detector.training(device, data_loader=detector_train_loader, squeezers=squeezers, attackers=train_attacker)
-    # 7. Evaluating the attack method
+    # 6. Evaluating the attack method
     print("Evaluating the attack method...")
-
-    print('Accuracy of training samples\' Adversarial images: %f %%' % (100 * train_attacker.accuracy()))
-
+    model.predict(device, data_loader=DataLoader(dataset_adversarial, batch_size=batch_size))
+    print('Attack Success rate before detection: {}/{} = {}%'
+          .format(model.total - model.correct, model.total, model.correct/model.total*100))
+    model.clear_stat()
+    # 7 Train the detector
+    print("Training...")
+    detector.training(device, data_loader=DataLoader(adversarial_example_for_test_set, batch_size=batch_size,shuffle=True), squeezers=squeezers)
     # 8. test detector
     print("Defending...")
-    detector.test(device, data_loader=detector_test_loader, squeezers=squeezers, attackers=test_attacker)
-
-    print('Accuracy of test samples\' Adversarial images: %f %%' % (100 * test_attacker.accuracy()))
+    detector.test(device, data_loader=DataLoader(adversarial_example_for_test_set, batch_size=batch_size), squeezers=squeezers)
     print("Evaluating the detector")
     # 9. Evaluate robust classification techniques
 
-    detector.test(device, data_loader=detector_test_loader, squeezers=squeezers, attackers=test_attacker)
     for i, classifier in enumerate(classifiers):
         correct, total = (classifier.correct, classifier.total)
         tp, tn, fp, fn = (
