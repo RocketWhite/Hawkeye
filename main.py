@@ -16,6 +16,10 @@ def main():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     dataset_name = cfg.get("dataset", "dataset")
     try:
+        root = cfg.get("dataset", "root")
+    except:
+        root = "datasets"    
+    try:
         # first try to load the dataset of our own
         obj = importlib.import_module("datasets")
         dataset = getattr(obj, dataset_name)
@@ -23,14 +27,21 @@ def main():
         # if doesn't, try torchvision.datasets
         obj = importlib.import_module("torchvision.datasets")
         dataset = getattr(obj, dataset_name)
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                     std=[0.229, 0.224, 0.225])
     transform = transforms.Compose([
-        transforms.Pad(4),
+        transforms.RandomResizedCrop(224),
         transforms.RandomHorizontalFlip(),
-        transforms.RandomCrop(32),
-        transforms.ToTensor()])
+        transforms.ToTensor(),
+        normalize,
+        ])
     batch_size = int(cfg.get("model", "batch_size"))
-    training_set = dataset("datasets", train=True, transform=transform, download=True)
-    test_set = dataset("datasets", train=False, transform=transform, download=True)
+    if dataset_name == 'ImageNet':
+        training_set =  dataset(root, split='train')
+        test_set = dataset(root, split='train')
+    else:
+        training_set = dataset(root, train=True, transform=transform, download=True)
+        test_set = dataset(root, train=False, transform=transform, download=True)
     training_loader = DataLoader(training_set, batch_size, shuffle=True)
     test_loader = DataLoader(test_set, batch_size, shuffle=True)
     # 2. Load a pre-trained model or train a model
@@ -41,17 +52,18 @@ def main():
         # get own model first.
         obj = importlib.import_module("models")
         model = getattr(obj, model_name + dataset_name)().to(device)
+        if bool(int(cfg.get("model","retrain"))):
+            model.fit(device, data_loader=training_loader)
+        else:
+            path = "./models_dict/%s.ckpt" % model.__class__.__name__
+            model.load_state_dict(torch.load(path))
+
     except:
         obj = importlib.import_module("torchvision.models")
-        model = getattr(obj, model_name)
+        model = getattr(obj, model_name)(pretrained=True)
         if bool(int(cfg.get("model","retrain"))):
             raise ValueError("customized model doesn't contain your model {}, "
                              "and we doesn't support pretrained torchvision model".format(model_name))
-    if bool(int(cfg.get("model","retrain"))):
-        model.fit(device, data_loader=training_loader)
-    else:
-        path = "./models_dict/%s.ckpt" % model.__class__.__name__
-        model.load_state_dict(torch.load(path))
 
     # 3. Evaluate the trained model
     if int(cfg.get("model", "test")) != 0:
