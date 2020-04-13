@@ -6,12 +6,12 @@ from torch.utils.data import DataLoader, TensorDataset
 from pathlib import Path
 from adversarial_example_generator import constuct_adversarial_dataset
 
+
 def main():
     # 0. Load the config file
     print("Loading config...")
     cfg = configparser.ConfigParser()
     cfg.read("config.ini")
-
     # 1. Select and Load a dataset
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     dataset_name = cfg.get("dataset", "dataset")
@@ -37,9 +37,16 @@ def main():
     # pretrained model_dict name specification: ClassnameDataset.ckpt eg: ResNetCIFAR10.ckpt
     print("Loading Pretrained model...")
     model_name = cfg.get("model", "model")
-    obj = importlib.import_module("models")
-    model = getattr(obj, model_name + dataset_name)().to(device)
-
+    try:
+        # get own model first.
+        obj = importlib.import_module("models")
+        model = getattr(obj, model_name + dataset_name)().to(device)
+    except:
+        obj = importlib.import_module("torchvision.models")
+        model = getattr(obj, model_name)
+        if bool(int(cfg.get("model","retrain"))):
+            raise ValueError("customized model doesn't contain your model {}, "
+                             "and we doesn't support pretrained torchvision model".format(model_name))
     if bool(int(cfg.get("model","retrain"))):
         model.fit(device, data_loader=training_loader)
     else:
