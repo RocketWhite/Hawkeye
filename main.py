@@ -5,7 +5,7 @@ from torchvision import transforms
 from torch.utils.data import DataLoader, TensorDataset
 from pathlib import Path
 from adversarial_example_generator import constuct_adversarial_dataset
-
+from models.evaluate import evaluate
 
 def main():
     # 0. Load the config file
@@ -37,13 +37,13 @@ def main():
         ])
     batch_size = int(cfg.get("model", "batch_size"))
     if dataset_name == 'ImageNet':
-        training_set =  dataset(root, split='train')
-        test_set = dataset(root, split='train')
+        training_set =  dataset(root, split='train', transform=transform)
+        test_set = dataset(root, split='val', transform=transform)
     else:
         training_set = dataset(root, train=True, transform=transform, download=True)
         test_set = dataset(root, train=False, transform=transform, download=True)
     training_loader = DataLoader(training_set, batch_size, shuffle=True)
-    test_loader = DataLoader(test_set, batch_size, shuffle=True)
+    test_loader = DataLoader(test_set, batch_size)
     # 2. Load a pre-trained model or train a model
     # pretrained model_dict name specification: ClassnameDataset.ckpt eg: ResNetCIFAR10.ckpt
     print("Loading Pretrained model...")
@@ -68,10 +68,14 @@ def main():
     # 3. Evaluate the trained model
     if int(cfg.get("model", "test")) != 0:
         print("Evaluating the pretrained model...")
-        model.predict(device, data_loader=test_loader)
-        print('Accuracy of the model on the test images: {}/{} = {}%'.format(
-            model.correct, model.total, 100 * model.correct / model.total))
-        model.clear_stat()
+        try:
+            model.predict(device, data_loader=test_loader)
+            print('Accuracy of the model on the test images: {}/{} = {}%'.format(
+                model.correct, model.total, 100 * model.correct / model.total))
+            model.clear_stat()
+        except:
+            acc = evaluate(model, test_loader)
+            print("Top1 accuracy: {}%\nTop5 accurary: {}%".format(acc[0]*100, acc[1]*100))
     else:
         print("Skip evaluating the model")
 
