@@ -77,7 +77,7 @@ def main():
             acc = evaluate(model, test_loader)
             print("Top1 accuracy: {}%\nTop5 accurary: {}%".format(acc[0]*100, acc[1]*100))
     else:
-        print("Skip evaluating the model")
+        print("Skipping evaluating the model")
 
     # 4. Load pre-generated adversarial examples or Select some examples to attack
     num_train_natural = int(cfg.get('data_sampling', 'nb_train_natural_samples'))
@@ -87,11 +87,15 @@ def main():
     # the attack method for training detector and test can be different, load separately.
     train_attack_name = cfg.get("attack", "train_attack_method")
     train_params = dict([a, float(x)] for a, x in cfg.items("train_attack_parameters"))
+    print("1")
     path = './adversarial_examples/{}{}_{}_{}/'.format(
         model_name, dataset_name, train_attack_name, "_".join([str(elem) for elem in train_params.values()]))
+    print("2")
     with open(Path(path) / "train.pt", 'rb') as f:
         tensor_adversarial_for_training = torch.load(f)
+    print("3")
     dataset_adversarial = TensorDataset(*tensor_adversarial_for_training)
+    print("4")
     adversarial_example_for_train_set = constuct_adversarial_dataset(training_loader,
                                                                      DataLoader(dataset_adversarial,
                                                                                 batch_size=batch_size,
