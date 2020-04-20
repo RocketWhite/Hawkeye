@@ -7,10 +7,10 @@ from models.model_wrapper import ModelWrapper
 
 
 class DetectorExperiment(object):
-    def __init__(self):
+    def __init__(self, device):
         self.cfg = configparser.ConfigParser()
         self.cfg.read("./config.ini")
-        self.device = torch.device('cuda: 1' if torch.cuda.is_available() else 'cpu')
+        self.device = device
         self.dataset = self.cfg.get("dataset", "dataset")
         self.model = self.load_model(self.dataset)
         self.path, self.file = self.load_ae_file()
@@ -20,6 +20,8 @@ class DetectorExperiment(object):
         train_loader = self.load_natural_data(train=True, transform=self.model.transform)
         test_loader = self.load_natural_data(train=False, transform=self.model.transform)
 
+        # load pretrained parameter
+        self.model.load()
 
         # load adversarial examples
         ae_train_loader = self.load_adversarial_data(train=True)
@@ -84,11 +86,6 @@ class DetectorExperiment(object):
         obj = importlib.import_module("models")
         model = getattr(obj, model_name + dataset)().to(self.device)
         model = ModelWrapper(model)
-        # load model_dict
-        try:
-            model.load()
-        except FileNotFoundError:
-            model.train()
         return model
 
     def load_ae_file(self):
