@@ -29,7 +29,7 @@ python main.py
 ```
 
 ### config.ini
-* 
+
 
 ## Implement your own experiment
-We offer different componets for you to implement your own adversarial defense method. Check experiment/experiment_template.py to see how to 
+We offer different componets for you to implement your own adversarial defense method. Check experiment/experiment_template.py and write your own experiment.
