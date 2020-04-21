@@ -15,7 +15,6 @@ We highly recommend using anaconda to manage the virtual environment. You can do
 ### Installing
 ```
 git clone https://github.com/RocketWhite/Hawkeye.git
-
 ```
 ### Precaution
 **WARNING** :: All images should be scaled to [0, 1] with transform[to.Tensor()] before used in attacks and detecting.
