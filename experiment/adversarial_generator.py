@@ -29,7 +29,7 @@ class Generator():
 
     def load_attacker(self):
         def load(name, params):
-            torchattack_obj = importlib.import_module("torchattacks.torchattacks")
+            torchattack_obj = importlib.import_module("torchattacks.attacks")
             model_obj = importlib.import_module("attacks")
 
             try:
