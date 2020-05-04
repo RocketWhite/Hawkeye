@@ -6,7 +6,9 @@ class Hawkeye(object):
     def __init__(self, model, classifiers):
         self.model = model
         self.device = next(model.parameters()).device
-        self.classifiers = classifiers
+        self.classifiers = []
+        for classifier in classifiers:
+            self.classifiers.append(classifier.to(self.device))
         self.stat = BinaryCounter()
 
     def train(self,  data_loader, squeezers, learning_rate=1e-4, num_epochs=10):

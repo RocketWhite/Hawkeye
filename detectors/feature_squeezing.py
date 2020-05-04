@@ -16,14 +16,23 @@ class FeatureSqueezing(object):
         or adversarial exmaples.
         :return:
         """
+
+        logit_diff_list = [[], []]
+        label_list = []
         for images, labels in data_loader:
             images = images.to(self.device)
             labels = labels.to(self.device)
             logits = self.model(images).detach()
-
+            label_list.append(labels)
             for i, squeezer in enumerate(squeezers):
                 logit_diff = logits - self.model(squeezer.transform(images)).detach()
-                loss = self.classifiers[i].fit(self.device, x=logit_diff, y=labels, mode='FPR', param=0.01)
+                logit_diff_list[i].append(logit_diff)
+            print(len(logit_diff_list[0]), len(logit_diff_list[1]))
+        labels = torch.cat(label_list)
+        for i, squeezer in enumerate(squeezers):
+            logit_diff = torch.cat(logit_diff_list[i])
+            print(logit_diff.shape)
+            self.classifiers[i].fit(self.device, x=logit_diff, y=labels, mode='FPR', param=0.01)
 
     def test(self, data_loader, squeezers):
         for images, labels in data_loader:
@@ -34,6 +43,4 @@ class FeatureSqueezing(object):
             for i, squeezer in enumerate(squeezers):
                 logit_diff = logit - self.model(squeezer.transform(images))
                 predicts = predicts | self.classifiers[i].predict(self.device, x=logit_diff, y=labels).to(self.device)
-            print(predicts)
-            print(labels)
             self.stat.count(predicts, labels)

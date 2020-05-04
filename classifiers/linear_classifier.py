@@ -1,15 +1,15 @@
 import torch
 import torch.nn
 import torch.nn as nn
+import matplotlib.pyplot as plt
 from utils import BinaryCounter
 
-class LinearClassifier(nn.Module):
+class LinearClassifier():
     def __init__(self):
         super(LinearClassifier, self).__init__()
         self.threshold = 0
         self.stat = BinaryCounter()
 
-    
     def forward(self, x):
         return torch.norm(x, p=1, dim=1)
 
@@ -38,11 +38,20 @@ class LinearClassifier(nn.Module):
         # fit
         x = x.to(device)
         y = y.to(device)
+        output = self.forward(x)
+        print(output.shape)
+        index = (y == 0).nonzero()
+        legitimate_output = output[index[:, 0]]
+        index = (y == 1).nonzero()
+        malicious_output = output[index[:, 0]]
+        plt.hist(legitimate_output.cpu())
+        plt.hist(malicious_output.cpu())
+        plt.show()
         if mode == 'FPR':
             index = (y == 0).nonzero()
-            legitimate_x = x[index[:,0]]
-            num_of_legitimate_x = legitimate_x.shape[0]
-            self.threshold = torch.topk(legitimate_x, round(param*num_of_legitimate_x)).values[-1]
+            legitimate_output = output[index[:,0]]
+            num_of_legitimate_output = legitimate_output.shape[0]
+            self.threshold = torch.topk(legitimate_output, round(param*num_of_legitimate_output)).values[-1]
 
 
     # Save the model checkpoint

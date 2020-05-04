@@ -29,6 +29,9 @@ class DetectorExperiment(object):
 
         # generate examples for detector
         mixed_train_loader = self.generate_mixed_dataloader(train_loader, ae_train_loader, train=True)
+        # print(len(train_loader.dataset))
+        # print(len(ae_train_loader.dataset))
+        # print(len(mixed_train_loader.dataset))
         mixed_test_loader = self.generate_mixed_dataloader(test_loader, ae_test_loader, train=False)
 
         # evaluate model if needed
@@ -135,7 +138,7 @@ class DetectorExperiment(object):
         for name, classifier in self.cfg.items("classifier"):
             obj = __import__("classifiers", classifier)
             classifier_parameter = dict(self.cfg.items("classifier_parameters_" + name))
-            classifiers.append(getattr(obj, classifier)(**classifier_parameter).to(self.device))
+            classifiers.append(getattr(obj, classifier)(**classifier_parameter))
         detector_name = self.cfg.get("detector", "name")
         obj = __import__("detectors", detector_name)
         detector = getattr(obj, detector_name)(model, classifiers)
