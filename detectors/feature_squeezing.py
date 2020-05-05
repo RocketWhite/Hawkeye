@@ -27,12 +27,11 @@ class FeatureSqueezing(object):
             for i, squeezer in enumerate(squeezers):
                 logit_diff = logits - self.model(squeezer.transform(images)).detach()
                 logit_diff_list[i].append(logit_diff)
-            print(len(logit_diff_list[0]), len(logit_diff_list[1]))
         labels = torch.cat(label_list)
         for i, squeezer in enumerate(squeezers):
             logit_diff = torch.cat(logit_diff_list[i])
             print(logit_diff.shape)
-            self.classifiers[i].fit(self.device, x=logit_diff, y=labels, mode='FPR', param=0.01)
+            self.classifiers[i].fit(self.device, x=logit_diff, y=labels, mode='FPR', param=0.1)
 
     def test(self, data_loader, squeezers):
         for images, labels in data_loader:

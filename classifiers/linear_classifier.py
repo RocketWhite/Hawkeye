@@ -1,7 +1,6 @@
 import torch
 import torch.nn
 import torch.nn as nn
-import matplotlib.pyplot as plt
 from utils import BinaryCounter
 
 class LinearClassifier():
@@ -39,14 +38,10 @@ class LinearClassifier():
         x = x.to(device)
         y = y.to(device)
         output = self.forward(x)
-        print(output.shape)
         index = (y == 0).nonzero()
         legitimate_output = output[index[:, 0]]
         index = (y == 1).nonzero()
         malicious_output = output[index[:, 0]]
-        plt.hist(legitimate_output.cpu())
-        plt.hist(malicious_output.cpu())
-        plt.show()
         if mode == 'FPR':
             index = (y == 0).nonzero()
             legitimate_output = output[index[:,0]]

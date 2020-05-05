@@ -8,8 +8,8 @@ from models.imagenet_model_wrapper import ImageNetModelWrapper
 from .experiment_template import DetectorExperiment
 
 class ImageNetExperiment(DetectorExperiment):
-    def __init__(self):
-        super(ImageNetExperiment, self).__init__()
+    def __init__(self, device):
+        super(ImageNetExperiment, self).__init__(device)
 
     def load_model(self, dataset):
         model_name = self.cfg.get("model", "model")

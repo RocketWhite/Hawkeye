@@ -27,8 +27,7 @@ class Hawkeye(object):
                 for i, squeezer in enumerate(squeezers):
                     logit_diff = logits - self.model(squeezer.transform(images)).detach()
                     loss = self.classifiers[i].fit(self.device, x=logit_diff, y=labels, learning_rate=learning_rate)
-                    print("Epoch [{}/{}], Step [{}] Loss: {:.4f}"
-                          .format(epoch + 1, num_epochs, i + 1, loss))
+#                    print("Epoch [{}/{}], Step [{}] Loss: {:.4f}".format(epoch + 1, num_epochs, i + 1, loss))
 
     def test(self, data_loader, squeezers):
         for images, labels in data_loader:
