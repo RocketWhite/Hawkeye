@@ -12,12 +12,12 @@ class ImageNetClassifier(NNClassifier):
         self.fc4 = nn.Linear(10, 2)
         self.relu = nn.ReLU(inplace=True)
 
-    def forward(self, x):
-        out = self.relu(self.fc1(x))
-        out = self.relu(self.fc2(out))
-        out = self.relu(self.fc3(out))
-        out = self.fc4(out)
-        return out
+    # def forward(self, x):
+    #     out = self.relu(self.fc1(x))
+    #     out = self.relu(self.fc2(out))
+    #     out = self.relu(self.fc3(out))
+    #     out = self.fc4(out)
+    #     return out
 
     # def training(self, device, data_loader, learning_rate=2e-4, num_epochs=10):
     #     for epoch in range(num_epochs):
