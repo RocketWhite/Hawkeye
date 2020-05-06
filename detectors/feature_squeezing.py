@@ -31,7 +31,7 @@ class FeatureSqueezing(object):
         for i, squeezer in enumerate(squeezers):
             logit_diff = torch.cat(logit_diff_list[i])
             print(logit_diff.shape)
-            self.classifiers[i].fit(self.device, x=logit_diff, y=labels, mode='FPR', param=0.1)
+            self.classifiers[i].fit(self.device, x=logit_diff, y=labels, mode='FPR', param=0.05)
 
     def test(self, data_loader, squeezers):
         for images, labels in data_loader:
