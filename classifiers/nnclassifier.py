@@ -20,17 +20,6 @@ class NNClassifier(nn.Module):
         out = self.fc4(out)
         return out
 
-    # def training(self, device, data_loader, learning_rate=2e-4, num_epochs=10):
-    #     for epoch in range(num_epochs):
-    #         for i, (images, labels) in enumerate(data_loader):
-    #             images = images.to(device)
-    #             labels = labels.to(device)
-    #             loss = self.fit(device, images, labels, learning_rate)
-    #
-    #             if (i + 1) % 10 == 0:
-    #                 print("Epoch [{}/{}], Step [{}] Loss: {:.4f}"
-    #                       .format(epoch + 1, num_epochs, i + 1, loss))
-
     def fit(self, device, x, y, learning_rate=2e-4):
         self.train()
         # Loss and optimizer
@@ -49,12 +38,6 @@ class NNClassifier(nn.Module):
         optimizer.step()
 
         return loss.item()
-
-
-    # Save the model checkpoint
-    # path = "./models_dict/%s.ckpt" % model.__class__.__name__
-    # torch.save(model.state_dict(), path)
-
 
     def predict(self, device, x, y):
         # Test the model
