@@ -30,24 +30,24 @@ class ImageNetClassifier(NNClassifier):
     #                 print("Epoch [{}/{}], Step [{}] Loss: {:.4f}"
     #                       .format(epoch + 1, num_epochs, i + 1, loss))
 
-    def fit(self, device, x, y, learning_rate=2e-4):
-        self.train()
-        # Loss and optimizer
-        criterion = torch.nn.CrossEntropyLoss()
-        optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+    # def fit(self, device, x, y, learning_rate=2e-4):
+    #     self.train()
+    #     # Loss and optimizer
+    #     criterion = torch.nn.CrossEntropyLoss()
+    #     optimizer = torch.optim.Adam(self.parameters(), lr=learning_rate)
+    # 
+    #     # fit
+    #     x = x.to(device)
+    #     y = y.to(device)
+    #     outputs = self(x)
 
-        # fit
-        x = x.to(device)
-        y = y.to(device)
-        outputs = self(x)
+    #     # Backward and optimize
+    #     loss = criterion(outputs, y)
+    #     optimizer.zero_grad()
+    #     loss.backward()
+    #     optimizer.step()
 
-        # Backward and optimize
-        loss = criterion(outputs, y)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        return loss.item()
+    #      return loss.item()
 
 
     # Save the model checkpoint
@@ -55,14 +55,14 @@ class ImageNetClassifier(NNClassifier):
     # torch.save(model.state_dict(), path)
 
 
-    def predict(self, device, x, y):
-        # Test the model
-        self.eval()
-
-        with torch.no_grad():
-            x = x.to(device)
-            y = y.to(device)
-            _, output = torch.max(self(x).data, 1)
-            self.stat.count(output, y)
-        return output
+    # def predict(self, device, x, y):
+    #     # Test the model
+    #     self.eval()
+    #  
+    #     with torch.no_grad():
+    #         x = x.to(device)
+    #         y = y.to(device)
+    #         _, output = torch.max(self(x).data, 1)
+    #         self.stat.count(output, y)
+    #     return output
 
