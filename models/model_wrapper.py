@@ -75,7 +75,6 @@ class ModelWrapper(object):
             outputs = self.predict(data)
             _, predicted = torch.max(outputs.data, 1)
             self.stat.count(predicted, targets)
-
         return self.stat
 
     def load(self):

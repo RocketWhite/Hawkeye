@@ -20,10 +20,15 @@ class DetectorExperiment(object):
         train_loader = self.load_natural_data(train=True, transform=self.model.transform)
         test_loader = self.load_natural_data(train=False, transform=self.model.transform)
 
-
         # load adversarial examples
         ae_train_loader = self.load_adversarial_data(train=True)
         ae_test_loader = self.load_adversarial_data(train=False)
+
+        # retrain or not
+        retrain = bool(int(self.cfg.get("model", "retrain")))
+        if retrain:
+            self.model.train(train_loader)
+        self.model.load()
 
         # generate examples for detector
         mixed_train_loader = self.generate_mixed_dataloader(train_loader, ae_train_loader, train=True)
@@ -87,9 +92,6 @@ class DetectorExperiment(object):
         obj = importlib.import_module("models")
         model = getattr(obj, model_name + dataset)().to(self.device)
         model = ModelWrapper(model)
-        # load pretrained parameter
-        model.load()
-
         return model
 
     def load_ae_file(self):

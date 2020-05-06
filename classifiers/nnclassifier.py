@@ -3,6 +3,7 @@ import torch.nn
 import torch.nn as nn
 from utils import BinaryCounter
 
+
 class NNClassifier(nn.Module):
     def __init__(self):
         super(NNClassifier, self).__init__()

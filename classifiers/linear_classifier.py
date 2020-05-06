@@ -3,6 +3,7 @@ import torch.nn
 import torch.nn as nn
 from utils import BinaryCounter
 
+
 class LinearClassifier():
     def __init__(self):
         super(LinearClassifier, self).__init__()
@@ -44,7 +45,7 @@ class LinearClassifier():
         malicious_output = output[index[:, 0]]
         if mode == 'FPR':
             index = (y == 0).nonzero()
-            legitimate_output = output[index[:,0]]
+            legitimate_output = output[index[:, 0]]
             num_of_legitimate_output = legitimate_output.shape[0]
             self.threshold = torch.topk(legitimate_output, round(param*num_of_legitimate_output)).values[-1]
 

@@ -4,6 +4,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from torchvision.transforms import transforms
 from models.model_wrapper import ModelWrapper
 
+
 class ImageNetModelWrapper(ModelWrapper):
     def __init__(self, model):
         super(ImageNetModelWrapper, self).__init__(model)
@@ -17,15 +18,5 @@ class ImageNetModelWrapper(ModelWrapper):
         ])
         self.stat = Counter()
 
-        def test(self, dataloader):
-            for data, targets in dataloader:
-                data = data.to(self.device)
-                targets = targets.to(self.device)
-                outputs = self.predict(data)
-                _, predicted = torch.max(outputs.data, 1)
-                self.stat.count(predicted, targets)
-
-            return self.stat
-
-        def load(self):
-            pass
+    def load(self):
+        pass

@@ -3,6 +3,7 @@ import torch.nn
 import torch.nn as nn
 from classifiers  import NNClassifier 
 
+
 class Cifar10Classifier(NNClassifier):
     def __init__(self):
         super(Cifar10Classifier, self).__init__()
