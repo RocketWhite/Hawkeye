@@ -3,6 +3,7 @@ import torch.nn
 import torch.nn as nn
 from classifiers  import NNClassifier 
 
+
 class ImageNetClassifier(NNClassifier):
     def __init__(self):
         super(ImageNetClassifier, self).__init__()
@@ -11,4 +12,3 @@ class ImageNetClassifier(NNClassifier):
         self.fc3 = nn.Linear(100, 10, bias=True)
         self.fc4 = nn.Linear(10, 2)
         self.relu = nn.ReLU(inplace=True)
-

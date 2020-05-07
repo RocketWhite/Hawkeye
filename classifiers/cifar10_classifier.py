@@ -12,4 +12,3 @@ class Cifar10Classifier(NNClassifier):
         self.fc3 = nn.Linear(100, 10, bias=True)
         self.fc4 = nn.Linear(10, 2)
         self.relu = nn.ReLU(inplace=True)
-

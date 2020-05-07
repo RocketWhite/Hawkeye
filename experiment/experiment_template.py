@@ -125,7 +125,6 @@ class DetectorExperiment(object):
             dataset = TensorDataset(tensors[0], tensors[1])
         return DataLoader(dataset, batch_size=batch_size)
 
-
     def load_squeezer(self):
         squeezers = []
         for name, squeezer in self.cfg.items("squeezer"):
@@ -138,13 +137,14 @@ class DetectorExperiment(object):
         model.eval()
         # load classifier
         classifiers = []
+        output_mode = self.cfg.get("detector", "output")
         for name, classifier in self.cfg.items("classifier"):
             obj = __import__("classifiers", classifier)
             classifier_parameter = dict(self.cfg.items("classifier_parameters_" + name))
             classifiers.append(getattr(obj, classifier)(**classifier_parameter))
         detector_name = self.cfg.get("detector", "name")
         obj = __import__("detectors", detector_name)
-        detector = getattr(obj, detector_name)(model, classifiers)
+        detector = getattr(obj, detector_name)(model, classifiers, output_mode)
         return detector
 
     def generate_mixed_dataloader(self, natural_dataloader, ae_dataloader, train):

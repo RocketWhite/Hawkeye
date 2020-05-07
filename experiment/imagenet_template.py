@@ -32,4 +32,3 @@ class ImageNetExperiment(DetectorExperiment):
         batch_size = int(self.cfg.get("dataset", "batch_size"))
         loader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
         return loader
-

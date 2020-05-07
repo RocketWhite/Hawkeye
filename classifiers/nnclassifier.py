@@ -50,4 +50,3 @@ class NNClassifier(nn.Module):
             _, output = torch.max(self(x).data, 1)
             self.stat.count(output, y)
         return output
-

@@ -4,7 +4,7 @@ import torch.nn as nn
 from utils import BinaryCounter
 
 
-class LinearClassifier():
+class LinearClassifier(object):
     def __init__(self):
         super(LinearClassifier, self).__init__()
         self.threshold = 0
@@ -49,12 +49,6 @@ class LinearClassifier():
             num_of_legitimate_output = legitimate_output.shape[0]
             self.threshold = torch.topk(legitimate_output, round(param*num_of_legitimate_output)).values[-1]
 
-
-    # Save the model checkpoint
-    # path = "./models_dict/%s.ckpt" % model.__class__.__name__
-    # torch.save(model.state_dict(), path)
-
-    
     def predict(self, device, x, y):
         # Test the model
         x = x.to(device)

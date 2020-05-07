@@ -15,7 +15,7 @@ class Generator():
         dataloader['train'] = self.exp.load_natural_data(train=True, transform=self.exp.model.transform)
         dataloader['test'] = self.exp.load_natural_data(train=False, transform=self.exp.model.transform)
         for key, file in self.exp.file.items():
-            num = int(self.exp.cfg.get("generator","num_" + key))
+            num = int(self.exp.cfg.get("generator", "num_" + key))
             if not os.path.exists(file):
                 os.makedirs(self.exp.path[key], exist_ok=True)
                 attacker = AttackWrapper(self.attackers[key], self.exp.model.model)
@@ -45,17 +45,7 @@ class Generator():
         train_attack_params = dict([a, float(x)] for a, x in self.exp.cfg.items("train_attack_parameters"))
         test_attack_name = self.exp.cfg.get('attack', 'test_attack_method')
         test_attack_params = dict([a, float(x)] for a, x in self.exp.cfg.items("test_attack_parameters"))
+        print([a, float(x)] for a, x in self.exp.cfg.items("test_attack_parameters"))
         train_attacker = load(train_attack_name, train_attack_params)
         test_attacker = load(test_attack_name, test_attack_params)
         return {'train': train_attacker, 'test': test_attacker}
-
-
-
-
-
-
-
-
-
-
-
