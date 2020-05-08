@@ -7,6 +7,7 @@ from pathlib import Path
 from models.imagenet_model_wrapper import ImageNetModelWrapper
 from .experiment_template import DetectorExperiment
 
+
 class ImageNetExperiment(DetectorExperiment):
     def __init__(self, device):
         super(ImageNetExperiment, self).__init__(device)

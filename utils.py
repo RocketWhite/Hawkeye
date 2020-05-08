@@ -2,9 +2,6 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 
 
-
-
-
 class Counter(object):
     def __init__(self):
         self.correct = 0

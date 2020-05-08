@@ -55,10 +55,10 @@ class DetectorExperiment(object):
         # load detector and training
         squeezers = self.load_squeezer()
         detector = self.load_detector(self.model.model)
-        detector.train(mixed_train_loader, squeezers)
+        detector.fit(mixed_train_loader, squeezers)
 
         # defending
-        detector.test(mixed_test_loader, squeezers)
+        detector.predict(mixed_test_loader, squeezers)
         # evaluating
         self.evaluate(detector)
 
@@ -141,7 +141,7 @@ class DetectorExperiment(object):
         for name, classifier in self.cfg.items("classifier"):
             obj = __import__("classifiers", classifier)
             classifier_parameter = dict(self.cfg.items("classifier_parameters_" + name))
-            classifiers.append(getattr(obj, classifier)(**classifier_parameter))
+            classifiers.append(getattr(obj, classifier)(self.device, **classifier_parameter))
         detector_name = self.cfg.get("detector", "name")
         obj = __import__("detectors", detector_name)
         detector = getattr(obj, detector_name)(model, classifiers, output_mode)

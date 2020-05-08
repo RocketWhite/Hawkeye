@@ -45,7 +45,6 @@ class Generator():
         train_attack_params = dict([a, float(x)] for a, x in self.exp.cfg.items("train_attack_parameters"))
         test_attack_name = self.exp.cfg.get('attack', 'test_attack_method')
         test_attack_params = dict([a, float(x)] for a, x in self.exp.cfg.items("test_attack_parameters"))
-        print([a, float(x)] for a, x in self.exp.cfg.items("test_attack_parameters"))
         train_attacker = load(train_attack_name, train_attack_params)
         test_attacker = load(test_attack_name, test_attack_params)
         return {'train': train_attacker, 'test': test_attacker}

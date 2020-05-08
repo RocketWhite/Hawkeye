@@ -5,55 +5,41 @@ from utils import BinaryCounter
 
 
 class LinearClassifier(object):
-    def __init__(self):
+    def __init__(self, device, **kw):
         super(LinearClassifier, self).__init__()
         self.threshold = 0
         self.stat = BinaryCounter()
+        self.device = device
+        self.kw = kw
 
-    def forward(self, x):
-        return torch.norm(x, p=1, dim=1)
+    @staticmethod
+    def forward(X):
+        return torch.norm(X, p=1, dim=1)
 
-    # def training(self, device, data_loader, learning_rate=2e-4, num_epochs=10):
-    #     for epoch in range(num_epochs):
-    #         for i, (images, labels) in enumerate(data_loader):
-    #             images = images.to(device)
-    #             labels = labels.to(device)
-    #             loss = self.fit(device, images, labels, learning_rate)
-    #
-    #             if (i + 1) % 10 == 0:
-    #                 print("Epoch [{}/{}], Step [{}] Loss: {:.4f}"
-    #                       .format(epoch + 1, num_epochs, i + 1, loss))
-
-    def fit(self, device, x, y, mode='MAP', param=0.01):
+    def fit(self, X, y):
+        mode = self.kw["mode"]
+        param = float(self.kw['param'])
         """
         :mode: the way to find the threshold 
                'FPR': set the training false positive rate; 
                'TPR': set the training false positive rate;
-               'FNR': set the training false negative rate;
-               'ACC': set the accuracy rate;
-               'ERR': set the error rate;
-               'MAP': maximum-a-posteriori;
-               'ML':  maximum likelihood;
         """
         # fit
-        x = x.to(device)
-        y = y.to(device)
-        output = self.forward(x)
+        output = self.forward(X)
         index = (y == 0).nonzero()
         legitimate_output = output[index[:, 0]]
         index = (y == 1).nonzero()
         malicious_output = output[index[:, 0]]
+        num_of_legitimate_output = legitimate_output.shape[0]
+        num_of_malicious_output = malicious_output.shape[0]
         if mode == 'FPR':
-            index = (y == 0).nonzero()
-            legitimate_output = output[index[:, 0]]
-            num_of_legitimate_output = legitimate_output.shape[0]
-            self.threshold = torch.topk(legitimate_output, round(param*num_of_legitimate_output)).values[-1]
+            self.threshold = torch.topk(legitimate_output, round(param * num_of_legitimate_output)).values[-1]
+        elif mode == 'TPR':
+            self.threshold = torch.topk(legitimate_output, round(param * num_of_malicious_output)).values[-1]
 
-    def predict(self, device, x, y):
+    def predict(self, X, y):
         # Test the model
-        x = x.to(device)
-        y = y.to(device)
-        output = (self.forward(x) > self.threshold).type(torch.LongTensor).to(device)
+        output = (self.forward(X) > self.threshold).type(torch.LongTensor)
         self.stat.count(output, y)
         return output
 
