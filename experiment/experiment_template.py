@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from pathlib import Path
 from models.model_wrapper import ModelWrapper
 from experiment.adversarial_generator import Generator
+from torch import nn
 
 
 class DetectorExperiment(object):
@@ -145,7 +146,10 @@ class DetectorExperiment(object):
         for name, classifier in self.cfg.items("classifier"):
             obj = __import__("classifiers", classifier)
             classifier_parameter = dict(self.cfg.items("classifier_parameters_" + name))
-            classifiers.append(getattr(obj, classifier)(self.device, **classifier_parameter))
+            inst = getattr(obj, classifier)(self.device, **classifier_parameter)
+            if isinstance(inst, nn.Module):
+                inst = inst.to(self.device)
+            classifiers.append(inst)
         detector_name = self.cfg.get("detector", "name")
         obj = __import__("detectors", detector_name)
         detector = getattr(obj, detector_name)(model, classifiers, output_mode)

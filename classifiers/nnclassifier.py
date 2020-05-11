@@ -15,7 +15,6 @@ class NNClassifier(nn.Module):
         self.relu = nn.ReLU(inplace=True)
         self.stat = BinaryCounter()
         self.device = device
-        self.to(self.device)
         self.num_epochs = int(num_epochs)
         self.learning_rate = float(learning_rate)
         self.batch_size = int(batch_size)

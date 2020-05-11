@@ -1,7 +1,7 @@
 import torch
 import torch.nn
-import torch.nn as nn
 from utils import BinaryCounter
+import matplotlib.pyplot as plt
 
 
 class LinearClassifier(object):
@@ -30,8 +30,12 @@ class LinearClassifier(object):
         legitimate_output = output[index[:, 0]]
         index = (y == 1).nonzero()
         malicious_output = output[index[:, 0]]
+        # plt.hist(legitimate_output)
+        # plt.hist(malicious_output)
+        # plt.show()
         num_of_legitimate_output = legitimate_output.shape[0]
         num_of_malicious_output = malicious_output.shape[0]
+
         if mode == 'FPR':
             self.threshold = torch.topk(legitimate_output, round(param * num_of_legitimate_output)).values[-1]
         elif mode == 'TPR':
