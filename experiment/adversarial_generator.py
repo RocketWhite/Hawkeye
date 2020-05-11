@@ -5,7 +5,7 @@ from attacks.attack_wrapper import AttackWrapper
 from pathlib import Path
 
 
-class Generator():
+class Generator:
     def __init__(self, exp):
         self.exp = exp
         self.attackers = self.load_attacker()
@@ -31,7 +31,7 @@ class Generator():
         def load(name, params):
             torchattack_obj = importlib.import_module("torchattacks.attacks")
             model_obj = importlib.import_module("attacks")
-
+            self.exp.model.load()
             try:
                 # try load our own attack method first
                 attack_instance = getattr(model_obj, name)(self.exp.model.model, **params)

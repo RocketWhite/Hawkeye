@@ -8,15 +8,11 @@ if __name__  == "__main__":
     cfg.read("./config.ini")
     retrain = bool(int(cfg.get("model", "retrain")))
     dataset = cfg.get("dataset", "dataset")
-    device = torch.device('cuda: 1' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda: 0' if torch.cuda.is_available() else 'cpu')
     if dataset == 'ImageNet':
         exp = ImageNetExperiment(device)
     else:
         exp = DetectorExperiment(device)
-
-    # generate adversarial examples if data is not exists.
-    generator = Generator(exp)
-    generator.run()
 
     # run model
     exp.run()

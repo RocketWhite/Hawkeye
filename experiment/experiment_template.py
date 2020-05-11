@@ -4,6 +4,7 @@ import importlib
 from torch.utils.data import DataLoader, TensorDataset
 from pathlib import Path
 from models.model_wrapper import ModelWrapper
+from experiment.adversarial_generator import Generator
 
 
 class DetectorExperiment(object):
@@ -20,15 +21,18 @@ class DetectorExperiment(object):
         train_loader = self.load_natural_data(train=True, transform=self.model.transform)
         test_loader = self.load_natural_data(train=False, transform=self.model.transform)
 
-        # load adversarial examples
-        ae_train_loader = self.load_adversarial_data(train=True)
-        ae_test_loader = self.load_adversarial_data(train=False)
-
         # retrain or not
         retrain = bool(int(self.cfg.get("model", "retrain")))
         if retrain:
             self.model.train(train_loader)
         self.model.load()
+        # generate adversarial examples
+        generator = Generator(self)
+        generator.run()
+
+        # load adversarial examples
+        ae_train_loader = self.load_adversarial_data(train=True)
+        ae_test_loader = self.load_adversarial_data(train=False)
 
         # generate examples for detector
         mixed_train_loader = self.generate_mixed_dataloader(train_loader, ae_train_loader, train=True)
