@@ -10,10 +10,12 @@ class AttackWrapper():
         self.model = model
         self.device = next(model.parameters()).device
         self.stat = Counter()
+        self.epsilon = []
 
     def attack(self, x, y):
         ori_outputs = self.model(x)
         imgs = self.attacker(x, y)
+        self.epsilon.append(imgs-x)
         label = torch.ones_like(y)
         ae_outputs = self.model(imgs)
         _, ori_predicted = torch.max(ori_outputs.data, 1)

@@ -20,9 +20,13 @@ class Generator:
                 os.makedirs(self.exp.path[key], exist_ok=True)
                 attacker = AttackWrapper(self.attackers[key], self.exp.model.model)
                 outputs = attacker.transform(dataloader[key], num)
+                print("L2 norm of the epsilon is {}".format(
+                    torch.mean(torch.norm(torch.cat(attacker.epsilon), p=2, dim=(1,2,3)))))
+                print("L infinity norm of the epsilon is {}".format(
+                    torch.mean(torch.norm(torch.cat(attacker.epsilon), p=float('inf'), dim=(1, 2, 3)))))
                 tensors = outputs.dataset.tensors
-                with open(self.exp.file[key], 'wb') as f:
-                    torch.save(tensors, f)
+                # with open(self.exp.file[key], 'wb') as f:
+                #     torch.save(tensors, f)
 
             else:
                 print("Skip generating adversariral examples in {}.".format(self.exp.file[key]))

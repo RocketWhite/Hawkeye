@@ -44,8 +44,8 @@ class NNClassifier(nn.Module):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-                if epoch % 5 == 0:
-                    print("Epoch [{}/{}], Loss: {:.4f}".format(epoch + 1, self.num_epochs, loss))
+                # if epoch % 5 == 0:
+                #     print("Epoch [{}/{}], Loss: {:.4f}".format(epoch + 1, self.num_epochs, loss))
 
     def predict(self, X, y):
         # Test the model
