@@ -38,11 +38,10 @@ class ResidualBlock(nn.Module):
 
 class ResNetCIFAR10(nn.Module):
     # ResNet for CIFAR10
-    def __init__(self):
+    def __init__(self, num_classes=10):
         super(ResNetCIFAR10, self).__init__()
         block = ResidualBlock
         layers = [2, 2, 2]
-        num_classes = 10
         self.correct = 0.
         self.total = 0.
         self.in_channels = 16
