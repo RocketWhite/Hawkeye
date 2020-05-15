@@ -1,4 +1,4 @@
-from torchattacks import CW
-
-
-class CWAdaption(CW):
+# from attacks.cw import CW_ImageNet
+#
+#
+# class CWAdaption(CW_ImageNet):

@@ -18,10 +18,7 @@ class Generator:
             num = int(self.exp.cfg.get("generator", "num_" + key))
             if not os.path.exists(file):
                 os.makedirs(self.exp.path[key], exist_ok=True)
-                if self.exp.dataset == 'ImageNet':
-                    attacker = ImageNetAttackWrapper(self.attackers[key], self.exp.model)
-                else:
-                    attacker = AttackWrapper(self.attackers[key], self.exp.model)
+                attacker = AttackWrapper(self.attackers[key], self.exp.model)
                 outputs = attacker.transform(dataloader[key], num)
                 print("L2 norm of the epsilon is {}".format(
                     torch.mean(torch.norm(torch.cat(attacker.epsilon), p=2, dim=(1,2,3)))))

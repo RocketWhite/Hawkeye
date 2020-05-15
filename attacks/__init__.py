@@ -1,4 +1,4 @@
 from .attack_wrapper import AttackWrapper
-from .imagenet_attack_wrapper import ImageNetAttackWrapper
+from .cw import CW_ImageNet
 
-__all__ = ("AttackWrapper", "ImageNetAttackWrapper")
+__all__ = ("AttackWrapper", "CW_ImageNet")
