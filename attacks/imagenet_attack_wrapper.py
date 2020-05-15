@@ -5,17 +5,15 @@ from .attack_wrapper import AttackWrapper
 class ImageNetAttackWrapper(AttackWrapper):
     def __init__(self, attacker, model_wrapper):
         super().__init__(attacker, model_wrapper)
-        self.mean = torch.tensor([0.485, 0.456, 0.406]).reshape([1,3,1,1])
-        self.std = torch.tensor([0.229, 0.224, 0.225]).reshape([1,3,1,1])
+        self.mean = torch.tensor([0.485, 0.456, 0.406]).reshape([1,3,1,1]).to(self.device)
+        self.std = torch.tensor([0.229, 0.224, 0.225]).reshape([1,3,1,1]).to(self.device)
 
     def attack(self, x, y):
-        print(x)
-        x = x * self.std + self.mean
-        print(x)
         ori_outputs = self.model(x)
+        x = x * self.std + self.mean
         imgs = self.attacker(x, y)
-        imgs = (imgs - self.mean) / self.std
         self.epsilon.append(imgs-x)
+        imgs = imgs * self.std + self.mean
         label = torch.ones_like(y)
         ae_outputs = self.model(imgs)
         _, ori_predicted = torch.max(ori_outputs.data, 1)

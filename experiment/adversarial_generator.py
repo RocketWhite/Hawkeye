@@ -28,8 +28,8 @@ class Generator:
                 print("Li norm of the epsilon is {}".format(
                     torch.mean(torch.norm(torch.cat(attacker.epsilon), p=float('inf'), dim=(1, 2, 3)))))
                 tensors = outputs.dataset.tensors
-                # with open(self.exp.file[key], 'wb') as f:
-                #     torch.save(tensors, f)
+                with open(self.exp.file[key], 'wb') as f:
+                    torch.save(tensors, f)
 
             else:
                 print("Skip generating adversariral examples in {}.".format(self.exp.file[key]))
