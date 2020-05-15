@@ -1,7 +1,7 @@
 import importlib
 import os
 import torch
-from attacks.attack_wrapper import AttackWrapper
+from attacks import AttackWrapper, ImageNetAttackWrapper
 from pathlib import Path
 
 
@@ -18,11 +18,14 @@ class Generator:
             num = int(self.exp.cfg.get("generator", "num_" + key))
             if not os.path.exists(file):
                 os.makedirs(self.exp.path[key], exist_ok=True)
-                attacker = AttackWrapper(self.attackers[key], self.exp.model.model)
+                if self.exp.dataset == 'ImageNet':
+                    attacker = ImageNetAttackWrapper(self.attackers[key], self.exp.model)
+                else:
+                    attacker = AttackWrapper(self.attackers[key], self.exp.model)
                 outputs = attacker.transform(dataloader[key], num)
                 print("L2 norm of the epsilon is {}".format(
                     torch.mean(torch.norm(torch.cat(attacker.epsilon), p=2, dim=(1,2,3)))))
-                print("L infinity norm of the epsilon is {}".format(
+                print("Li norm of the epsilon is {}".format(
                     torch.mean(torch.norm(torch.cat(attacker.epsilon), p=float('inf'), dim=(1, 2, 3)))))
                 tensors = outputs.dataset.tensors
                 # with open(self.exp.file[key], 'wb') as f:

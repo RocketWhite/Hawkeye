@@ -5,10 +5,10 @@ import math
 
 
 class AttackWrapper():
-    def __init__(self, attacker, model):
+    def __init__(self, attacker, model_wrapper):
         self.attacker = attacker
-        self.model = model
-        self.device = next(model.parameters()).device
+        self.model = model_wrapper.model
+        self.device = next(self.model.parameters()).device
         self.stat = Counter()
         self.epsilon = []
 
