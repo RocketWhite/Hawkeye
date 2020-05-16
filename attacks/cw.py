@@ -5,6 +5,9 @@ from torchattacks.attacks import CW
 
 
 class CW_ImageNet(CW):
+    def __init__(self, model, targeted=False, c=1e-4, kappa=0, iters=1000, lr=0.01):
+        super().__init__(model, bool(targeted), float(c), float(kappa), int(iters), float(lr))
+    
     def forward(self, images, labels):
         r"""
         Overridden.
@@ -39,11 +42,11 @@ class CW_ImageNet(CW):
 
         for step in range(self.iters):
 
-            a = 1 / 2 * (nn.Tanh()(w) + 1)
-            a = (a - mean) / std
+            a = (1 / 2 * (nn.Tanh()(w) + 1) - mean) / std
             loss1 = nn.MSELoss(reduction='sum')(a, images)
             loss2 = torch.sum(self.c * f(a))
-
+            if step % 100 == 0:
+                print(step, loss1, loss2)
             cost = loss1 + loss2
 
             optimizer.zero_grad()
@@ -58,7 +61,5 @@ class CW_ImageNet(CW):
                 prev = cost
 
             print('- CW Attack Progress : %2.2f %%        ' % ((step + 1) / self.iters * 100), end='\r')
-
-        adv_images = (1 / 2 * (nn.Tanh()(w) + 1)).detach()
-        adv_images = (adv_images - mean) / std
+        adv_images = ((1 / 2 * (nn.Tanh()(w) + 1)).detach() - mean) / std
         return adv_images

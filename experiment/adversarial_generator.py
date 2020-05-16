@@ -1,7 +1,7 @@
 import importlib
 import os
 import torch
-from attacks import AttackWrapper, ImageNetAttackWrapper
+from attacks import AttackWrapper
 from pathlib import Path
 
 
@@ -20,6 +20,10 @@ class Generator:
                 os.makedirs(self.exp.path[key], exist_ok=True)
                 attacker = AttackWrapper(self.attackers[key], self.exp.model)
                 outputs = attacker.transform(dataloader[key], num)
+                print("L0 norm of the epsilon is {}".format(
+                    torch.mean(torch.norm(torch.cat(attacker.epsilon), p=0, dim=(1,2,3)))))
+                print("L1 norm of the epsilon is {}".format(
+                    torch.mean(torch.norm(torch.cat(attacker.epsilon), p=1, dim=(1, 2, 3)))))
                 print("L2 norm of the epsilon is {}".format(
                     torch.mean(torch.norm(torch.cat(attacker.epsilon), p=2, dim=(1,2,3)))))
                 print("Li norm of the epsilon is {}".format(
