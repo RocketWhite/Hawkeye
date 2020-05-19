@@ -45,7 +45,7 @@ class CW_ImageNet(CW):
             a = (1 / 2 * (nn.Tanh()(w) + 1) - mean) / std
             loss1 = nn.MSELoss(reduction='sum')(a, images)
             loss2 = torch.sum(self.c * f(a))
-            if step % 100 == 0:
+            if step % 1000 == 0:
                 print(step, loss1, loss2)
             cost = loss1 + loss2
 

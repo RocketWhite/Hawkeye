@@ -36,8 +36,7 @@ class AttackWrapper():
             x.append(ae_images)
             y.append(labels)
             i = len(y)
-            if i % 10 == 0:
-                print("finish {}/{} batches".format(str(i), str(total_iteration)))
+            print("finish {}/{} batches".format(str(i), str(total_iteration)))
 
         x = torch.cat(x, dim=0).cpu()
         y = torch.cat(y, 0).cpu()

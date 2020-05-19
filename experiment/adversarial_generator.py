@@ -42,11 +42,15 @@ class Generator:
             self.exp.model.load()
             try:
                 # try load our own attack method first
-                attack_instance = getattr(model_obj, name)(self.exp.model.model, iters=5000, **params)
+                attack_instance = getattr(model_obj, name)(self.exp.model.model, 
+                                                           # iters=5000, 
+                                                           **params)
 
             except AttributeError:
                 # if it doesn't exist, load torchattack.
-                attack_instance = getattr(torchattack_obj, name)(self.exp.model.model, iters=5000, **params)
+                attack_instance = getattr(torchattack_obj, name)(self.exp.model.model, 
+                                                                 # iters=5000,
+                                                                 **params)
             return attack_instance
 
         train_attack_name = self.exp.cfg.get('attack', 'train_attack_method')
