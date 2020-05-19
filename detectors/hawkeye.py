@@ -21,7 +21,6 @@ class Hawkeye(FeatureSqueezing):
         for i, squeezer in enumerate(squeezers):
             outputs_diff = torch.cat(outputs_diff_list[i])
             self.classifiers[i].fit(X=outputs_diff, y=labels_all)
-
     def predict(self, data_loader, squeezers):
         for images, labels in data_loader:
             images = images.to(self.device)

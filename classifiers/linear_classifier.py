@@ -30,9 +30,9 @@ class LinearClassifier(object):
         legitimate_output = output[index[:, 0]]
         index = (y == 1).nonzero()
         malicious_output = output[index[:, 0]]
-        plt.hist(legitimate_output, color='blue')
-        plt.hist(malicious_output, color='red')
-        plt.show()
+        # plt.hist(legitimate_output, color='blue')
+        # plt.hist(malicious_output, color='red')
+        # plt.show()
         num_of_legitimate_output = legitimate_output.shape[0]
         num_of_malicious_output = malicious_output.shape[0]
 

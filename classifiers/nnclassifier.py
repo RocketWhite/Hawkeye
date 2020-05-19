@@ -57,3 +57,6 @@ class NNClassifier(nn.Module):
             _, output = torch.max(self(X).data, 1)
             self.stat.count(output, y)
         return output.detach().cpu()
+
+    def save_model(path):
+        torch.save(self.state_dict(), path)

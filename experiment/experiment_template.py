@@ -61,7 +61,7 @@ class DetectorExperiment(object):
         squeezers = self.load_squeezer()
         detector = self.load_detector(self.model.model)
         detector.fit(mixed_train_loader, squeezers)
-
+        
         # defending
         detector.predict(mixed_test_loader, squeezers)
         # evaluating
